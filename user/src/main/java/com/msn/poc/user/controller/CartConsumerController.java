@@ -30,18 +30,18 @@ public class CartConsumerController extends AbstractRestHandler {
 	@Autowired
 	CartFeignClient cartFeignClient;
 	
-	@RequestMapping(value = "getcart", method = RequestMethod.GET)
-	@ResponseStatus(HttpStatus.OK)
-	@ApiOperation(value = "Consumes the cart service via feign client", notes = "Service to service call without hardcoding or directly refering the ip port of the called service")
-	public Set<String> getCart() {
+//	@RequestMapping(value = "getcart", method = RequestMethod.GET)
+//	@ResponseStatus(HttpStatus.OK)
+//	@ApiOperation(value = "Consumes the cart service via feign client", notes = "Service to service call without hardcoding or directly refering the ip port of the called service")
+//	public Set<String> getCart() {
 //		Set<String> data = new HashSet<String>();
 //		data.add("12345");
-		return cartFeignClient.getAll();
-	}
+//		return cartFeignClient.getAll();
+//	}
 	
 	@RequestMapping(value="getToken",method=RequestMethod.POST,consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.TEXT_PLAIN_VALUE)
 	@ResponseStatus(HttpStatus.OK)
-	@ApiOperation(value="Returns a JWT token",notes="Returns a JWT token")
+	@ApiOperation(value="Returns a JWT token",notes="Returns a JWT token for the provided user and it should be used for subsequent rest calls.")
 	public String generateToken(@RequestBody(required=true) UserDetail userDetails) throws TokenException{
 		JWTTokenUtility utility=new JWTTokenUtility();
 		try {
