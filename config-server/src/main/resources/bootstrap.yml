@@ -1,0 +1,13 @@
+spring: 
+  profiles: 
+    active: native
+  cloud:
+    config:
+      server:
+        native: 
+          searchLocations: file:///D:/Hackathon/microservices/config
+        #git: 
+          #uri: https://github.com/shamsnezami/shoppingcart/
+          #searchPaths: config 
+          #username: shamsnezami
+          #password: shams786

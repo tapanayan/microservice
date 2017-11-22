@@ -1,0 +1,35 @@
+project: 
+  name: user
+  version: 1.0
+  description: User MicroServices using Spring Boot
+  artifact: com.msn.poc.user
+info:
+  build:
+    artifact: ${project.artifactId}
+    name: ${project.name}
+    description: ${project.description}
+    version: ${project.version}
+
+server:
+  port: 8985
+
+management:
+  security:
+    enabled: false
+
+
+    
+eureka:
+  client:
+    registerWithEureka: true
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: http://localhost:8982/eureka/
+  instance:
+    preferIpAddress: true
+spring:
+  application:
+    name: user
+  cloud:
+    config:
+      enabled: true

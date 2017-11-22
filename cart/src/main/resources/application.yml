@@ -1,0 +1,53 @@
+#default project info followed by actual injected pom-specified values.
+project:
+  name: cart
+  version: 1.0
+  description: Cart MicroServices using Spring Boot
+  artifact: com.msn.poc.cart
+info:
+  build:
+    artifact: ${project.artifactId}
+    name: ${project.name}
+    description: ${project.description}
+    version: ${project.version}
+
+management:
+  security:
+    enabled: false
+
+
+    
+eureka:
+  client:
+    registerWithEureka: true
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: http://localhost:8982/eureka/
+  instance:
+    preferIpAddress: true
+spring:
+  application:
+    name: cart
+  cloud:
+    config:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        show_sql: true
+        use_sql_comments: true
+        format_sql: true
+        type: trace
+  datasource:
+    url: jdbc:mysql://localhost:3306/cart_db
+    username: root
+    password: root
+    
+#security:
+  #basic:
+    #enabled: false
+    
+  
+ 
