@@ -11,8 +11,10 @@ import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,16 +24,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.msn.poc.cart.bm.CartBusinessManager;
+import com.msn.poc.cart.bm.CheckoutBusinessManager;
 import com.msn.poc.cart.feignclient.UserFeignClient;
 import com.msn.poc.cart.model.AddToCartRequest;
 import com.msn.poc.cart.model.AddToWishListRequest;
+import com.msn.poc.cart.model.CheckoutRequest;
+import com.msn.poc.cart.model.CurrencyChangeRequest;
 import com.msn.poc.cart.model.Notification;
 import com.msn.poc.cart.model.Product;
-import com.msn.poc.cart.model.Wishlist;
+import com.msn.poc.cart.model.ResponseObject;
 import com.msn.poc.cart.repository.CartRepository;
+import com.msn.poc.cart.repository.InvoiceRepository;
+import com.msn.poc.cart.repository.PaymentRepository;
 import com.msn.poc.cart.repository.ProductRepository;
 import com.msn.poc.cart.repository.SellerRepository;
-
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
@@ -53,39 +59,53 @@ public class CartController extends AbstractRestHandler {
 	@Autowired
 	ProductRepository productRepository;
 	@Autowired
+	PaymentRepository paymentRepo;
+	@Autowired
+	InvoiceRepository invoiceRepo;
+	@Autowired 
+	RedisTemplate<String, String> redisTemplate; 
+
+	
+	@Autowired
 	UserFeignClient userFeignClient;
 
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
 	@RequestMapping(value = "getall", method = RequestMethod.POST,consumes=MediaType.TEXT_PLAIN_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(HttpStatus.OK)
 	@ApiOperation(value = "Get all the products from the cart", notes = "Get all the products from the cart")
-	public Set<Product> getAll(HttpServletRequest request, HttpServletResponse response,@RequestBody(required = true) String sessionToken) {
-		Set<Product> data = new CartBusinessManager().getAllProducts(sessionToken,cartRepository);
-		return data;
+	public List<Product> getAll(HttpServletRequest request, HttpServletResponse response,@RequestBody(required = true) String sessionToken) {
+		return new CartBusinessManager().getAllProducts(sessionToken,cartRepository,userFeignClient,redisTemplate,objectMapper);
 	}
 	
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
 	@RequestMapping(value="add",method=RequestMethod.POST,consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.TEXT_PLAIN_VALUE)
 	@ResponseStatus(HttpStatus.OK)
 	@ApiOperation(value = "Add a product to cart", notes = "Add a product to cart.If usersession is not supplied then a session key will be returned in the format 'SUCCESS-{sessionKey}' which should be used in future for other transactions.")
 	public String addToCart(HttpServletRequest request, HttpServletResponse response,@RequestBody(required = true)AddToCartRequest addToCartRequest){
+		System.out.println("Inside Add to cart.");
 		String session = addToCartRequest.getSessionToken();
 		if(session==null){
 			log.debug("User is without a sessionKey");
 		}else{
 			log.debug("User have a sessionKey");
 		}
-		return SUCCESS+"-"+new CartBusinessManager().addToCart(addToCartRequest,cartRepository,sellerRepository,productRepository,userFeignClient);
+		return SUCCESS+"-"+new CartBusinessManager().addToCart(addToCartRequest,cartRepository,sellerRepository,
+				productRepository,userFeignClient,false,redisTemplate,objectMapper);
 		
 	}
 	
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
 	@RequestMapping(value="remove/{productId}",method=RequestMethod.POST,consumes=MediaType.TEXT_PLAIN_VALUE,produces=MediaType.TEXT_PLAIN_VALUE)
 	@ResponseStatus(HttpStatus.OK)
 	@ApiOperation(value = "Removes a product from cart", notes = "Removes a product from cart")
-	public String removeFromCart(HttpServletRequest request, HttpServletResponse response,@RequestBody @PathVariable String productId,@RequestBody(required=true) String sessionToken){
-		System.out.println("Inside removeFromCart.ID=>"+productId);
+	public String removeFromCart(HttpServletRequest request, HttpServletResponse response,@RequestBody(required = true) @PathVariable String productId,@RequestBody(required=true) String sessionToken){
+		new CartBusinessManager().removeFromCart(productId,sessionToken,productRepository,cartRepository,
+				userFeignClient,redisTemplate,objectMapper);
 		return SUCCESS;
 		
 	}
 	
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
 	@RequestMapping(value = "reprice", method = RequestMethod.POST,consumes=MediaType.TEXT_PLAIN_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(HttpStatus.OK)
 	@ApiOperation(value = "Reprices all the products in the cart", notes = "Reprices all the products in the cart and returns the updated products.")
@@ -93,82 +113,67 @@ public class CartController extends AbstractRestHandler {
 		Set<Product> data = new HashSet<Product>();
 		Product product=new Product();
 		product.setName("Dummy");
-		product.setProductId("DummyId");
 		product.setPrice(100);
 		data.add(product);
 		return data;
 	}
 	
-	@RequestMapping(value = "wishlist/create/{name}/{userId}", method = RequestMethod.GET,produces=MediaType.TEXT_PLAIN_VALUE)
+	
+	
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
+	@RequestMapping(value = "wishlist/getAll", method = RequestMethod.POST,produces=MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(HttpStatus.OK)
-	@ApiOperation(value = "Creates wishlist", notes = "Creates a wishlist for a logged in user and returns the wishlist id.")
-	public String createWishlist(HttpServletRequest request, HttpServletResponse response,@RequestBody(required = true)@PathVariable String name,@RequestBody(required = true)@PathVariable String userId) {
-		System.out.println("Inside create wishlist.");
-		return name;
+	@ApiOperation(value = "Returns all products of the wishlist of the provided user", notes = "Returns all wishlist of the provided user.")
+	public List<Product> getAllWishList(@RequestBody(required = true) String sessionToken) {
+		return new CartBusinessManager().getAllWishlistProducts(sessionToken,cartRepository,userFeignClient);
 	}
 	
-	@RequestMapping(value = "wishlist/getAll/{userId}", method = RequestMethod.GET,produces=MediaType.APPLICATION_JSON_VALUE)
-	@ResponseStatus(HttpStatus.OK)
-	@ApiOperation(value = "Returns all wishlist of the provided user", notes = "Returns all wishlist of the provided user.")
-	public Set<Wishlist> getAllWishList(HttpServletRequest request, HttpServletResponse response,@RequestBody(required = true)@PathVariable String userId) {
-		System.out.println("Inside getAllWishList wishlist.");
-		Set<Wishlist> data = new HashSet<Wishlist>();
-		Wishlist wishlist=new Wishlist();
-		wishlist.setName("Dummy Wishlist");
-		wishlist.setWishlistId("Dummy");
-		wishlist.setUserId(userId);
-		data.add(wishlist);
-		return data;
-	}
-	
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
 	@RequestMapping(value = "wishlist/addProduct", method = RequestMethod.POST,produces=MediaType.TEXT_PLAIN_VALUE)
 	@ResponseStatus(HttpStatus.OK)
 	@ApiOperation(value = "Adds a product to a wishlist", notes = "Adds a product to a wishlist and returns SUCCESS/FAILURE status.")
 	public String addToWishlist(HttpServletRequest request, HttpServletResponse response,@RequestBody(required = true)AddToWishListRequest addToWishListRequest) {
 		System.out.println("Inside Add to wishlist.");
+		new CartBusinessManager().addToWishlist(addToWishListRequest.getSessionToken(), addToWishListRequest.getProduct(), 
+				cartRepository, sellerRepository, productRepository, userFeignClient);
 		return SUCCESS;
 	}
 	
-	@RequestMapping(value = "wishlist/removeProduct/{wishlistId}/{productId}/{userId}", method = RequestMethod.GET,produces=MediaType.TEXT_PLAIN_VALUE)
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
+	@RequestMapping(value = "wishlist/removeProduct/{productId}", method = RequestMethod.POST,produces=MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(HttpStatus.OK)
 	@ApiOperation(value = "Removes a product from a wishlist", notes = "Removes a product from a wishlist and returns SUCCESS/FAILURE status.")
-	public String removeFromWishlist(HttpServletRequest request, HttpServletResponse response,
-			@RequestBody(required = true)@PathVariable String wishlistId,
+	public ResponseObject removeFromWishlist(
 			@RequestBody(required = true)@PathVariable String productId,
-			@RequestBody(required = true)@PathVariable String userId) {
+			@RequestBody(required=true) String sessionToken) {
 		System.out.println("Inside remove from wishlist.");
-		System.out.println("Remove product "+productId+" from wishlist "+wishlistId);
-		return SUCCESS;
+		return new CartBusinessManager().removeFromWishlist(productId,sessionToken,productRepository,userFeignClient);
 	}
 	
-	@RequestMapping(value = "wishlist/getAll/{wishlistId}/{userId}", method = RequestMethod.GET,produces=MediaType.APPLICATION_JSON_VALUE)
-	@ResponseStatus(HttpStatus.OK)
-	@ApiOperation(value = "Retrieves products from a wishlist", notes = "Retrieves products from a wishlist.")
-	public List<Product> retrieveFromWishlist(HttpServletRequest request, HttpServletResponse response,
-			@RequestBody(required = true)@PathVariable String wishlistId,
-			@RequestBody(required = true)@PathVariable String userId) {
-		System.out.println("Inside retrieveFromWishlist.");
-		System.out.println("Retrieve products from wishlist "+wishlistId);
-		List<Product> data = new ArrayList<Product>();
-		Product product=new Product();
-		product.setName("Dummy");
-		product.setProductId("DummyId");
-		product.setPrice(100);
-		data.add(product);
-		return data;
-	}
 	
-	@RequestMapping(value = "wishlist/moveToCart/{wishlistId}/{userId}", method = RequestMethod.GET,produces=MediaType.TEXT_PLAIN_VALUE)
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
+	@RequestMapping(value = "wishlist/moveToCart/{productId}", method = RequestMethod.POST,produces=MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(HttpStatus.OK)
-	@ApiOperation(value = "Moves products from a wishlist to cart", notes = "Moves products from a wishlist to cart and returns SUCCESS/FAILURE status.")
-	public String moveToCart(HttpServletRequest request, HttpServletResponse response,
-			@RequestBody(required = true)@PathVariable String wishlistId,
-			@RequestBody(required = true)@PathVariable String userId) {
+	@ApiOperation(value = "Moves product from a wishlist to cart", notes = "Moves products from a wishlist to cart and returns SUCCESS/FAILURE status.")
+	public ResponseObject moveToCart(
+			@RequestBody(required = true)@PathVariable String productId,
+			@RequestBody(required = true)String sessionToken) {
 		System.out.println("Inside moveToCart.");
-		System.out.println("Move products from wishlist "+wishlistId+" to cart");
-		return SUCCESS;
+		return new CartBusinessManager().moveToCart(productId,sessionToken,productRepository,userFeignClient);
 	}
 	
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
+	@RequestMapping(value = "moveToWishlist/{productId}", method = RequestMethod.POST,produces=MediaType.APPLICATION_JSON_VALUE)
+	@ResponseStatus(HttpStatus.OK)
+	@ApiOperation(value = "Moves product from a wishlist to cart", notes = "Moves products from a cart to wishlist and returns SUCCESS/FAILURE status.")
+	public ResponseObject moveToWishlist(
+			@RequestBody(required = true)@PathVariable String productId,
+			@RequestBody(required = true)String sessionToken) {
+		System.out.println("Inside moveToWishlist.");
+		return new CartBusinessManager().moveToWishlist(productId,sessionToken,productRepository,userFeignClient,cartRepository);
+	}
+	
+	@CrossOrigin(origins = "http://10.245.231.99:4200")
 	@RequestMapping(value = "getNotifications/{userId}", method = RequestMethod.GET,produces=MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(HttpStatus.OK)
 	@ApiOperation(value = "This operation will return the list of notifications to be displayed to the user.", notes = "This operation will return the list of notifications to be displayed to the user.")
@@ -180,5 +185,24 @@ public class CartController extends AbstractRestHandler {
 		notification.setMessage("Your cart is 2 days old.");
 		notifications.add(notification);
 		return notifications;
+	}
+	
+	@RequestMapping(value = "changeCurrency", method = RequestMethod.POST,consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
+	@ResponseStatus(HttpStatus.OK)
+	@ApiOperation(value = "Changes currency", notes = "Changes currency and returns SUCCESS/FAILURE status.")
+	public ResponseObject changeCurrency(
+			@RequestBody(required = true)CurrencyChangeRequest currencyChangeRequest) {
+		System.out.println("Inside changeCurrency.");
+		return new CartBusinessManager().changeCurrency(currencyChangeRequest,cartRepository,userFeignClient);
+	}
+	
+	@RequestMapping(value = "checkout", method = RequestMethod.POST,consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
+	@ResponseStatus(HttpStatus.OK)
+	@ApiOperation(value = "Cart checkout", notes = "Cart checkout and returns SUCCESS/FAILURE status.")
+	public ResponseObject checkout(
+			@RequestBody(required = true)CheckoutRequest checkoutRequest) {
+		System.out.println("Inside checkout.");
+		return new CheckoutBusinessManager().checkout(checkoutRequest,cartRepository,productRepository,userFeignClient,
+				paymentRepo,invoiceRepo,redisTemplate,objectMapper,sellerRepository);
 	}
 }

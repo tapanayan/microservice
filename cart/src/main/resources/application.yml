@@ -36,8 +36,8 @@ spring:
       ddl-auto: none
     properties:
       hibernate:
-        show_sql: true
-        use_sql_comments: true
+        show_sql: false
+        use_sql_comments: false
         format_sql: true
         type: trace
   datasource:
@@ -48,6 +48,11 @@ spring:
 #security:
   #basic:
     #enabled: false
+    
+redishost: redis-14737.c9.us-east-1-2.ec2.cloud.redislabs.com
+redisport: 14737
+redispassword: Q3sPAHRazzvl843K
+
     
   
  

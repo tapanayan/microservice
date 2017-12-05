@@ -86,7 +86,20 @@ public class Product {
 	public void setSellerUserId(String sellerUserId) {
 		this.sellerUserId = sellerUserId;
 	}
-	
-	
-
+	@Override
+	public boolean equals(Object obj) {
+		if(productId!=null && obj !=null && obj instanceof Product){
+			return productId.equals(((Product)obj).getProductId());
+		}else{
+			return false;
+		}
+	}
+	@Override
+	public int hashCode() {
+		int hashCode=name.hashCode();
+		if(productId!=null){
+			hashCode+=productId.hashCode();
+		}
+		return hashCode;
+	}
 }

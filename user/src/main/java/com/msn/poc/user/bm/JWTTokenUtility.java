@@ -54,7 +54,7 @@ public class JWTTokenUtility {
 
 	private String getPayload(UserDetail userDetails) throws TokenException {
 		Calendar calendar=Calendar.getInstance();
-        calendar.add(Calendar.MINUTE, 5); 
+        calendar.add(Calendar.HOUR, 10); 
         CustomClaim customClaim = new CustomClaim();
         customClaim.setRole(userDetails.getUserRole());
         customClaim.setUserId(userDetails.getUserName());

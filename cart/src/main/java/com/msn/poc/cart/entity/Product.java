@@ -1,6 +1,7 @@
 package com.msn.poc.cart.entity;
 
 import java.sql.Timestamp;
+import java.util.List;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -10,6 +11,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
@@ -19,7 +21,7 @@ public class Product {
 	@Id
 	@GeneratedValue( strategy= GenerationType.AUTO )
 	@Column(name="PRODUCT_ID")
-	private String productId;
+	private Integer productId;
 	
 	@Column(name="PRODUCT_NAME")
 	private String productName;
@@ -51,14 +53,35 @@ public class Product {
 	@Column(name="CURRENCY")
 	private String currency;
 	
+	@Column(name="ALREADY_SOLD")
+	private boolean alreadySold;
+	
 	@ManyToOne
 	@JoinColumn(name="SELLER_ID")
 	private Seller seller;
 	
 	@OneToOne(mappedBy = "product", cascade = CascadeType.ALL)
 	private Cart cart;
-
 	
+	@OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
+	private List<Invoice> invoices;
+	
+	public boolean isAlreadySold() {
+		return alreadySold;
+	}
+
+	public void setAlreadySold(boolean alreadySold) {
+		this.alreadySold = alreadySold;
+	}
+
+	public List<Invoice> getInvoices() {
+		return invoices;
+	}
+
+	public void setInvoices(List<Invoice> invoices) {
+		this.invoices = invoices;
+	}
+
 	public Cart getCart() {
 		return cart;
 	}
@@ -67,11 +90,11 @@ public class Product {
 		this.cart = cart;
 	}
 
-	public String getProductId() {
+	public Integer getProductId() {
 		return productId;
 	}
 
-	public void setProductId(String productId) {
+	public void setProductId(Integer productId) {
 		this.productId = productId;
 	}
 
