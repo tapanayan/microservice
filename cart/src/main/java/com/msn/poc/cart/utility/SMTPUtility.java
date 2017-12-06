@@ -14,7 +14,7 @@ import com.sendgrid.SendGrid;
 
 public class SMTPUtility {
 	private static final Logger LOGGER = Logger.getLogger(SMTPUtility.class);
-	private static final String SEND_GRID_KEY = "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";
+	private static final String SEND_GRID_KEY = "";
 
 	private SMTPUtility() {
 		//

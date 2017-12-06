@@ -1,31 +1,19 @@
 package com.msn.poc.cart.bm;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
-
 import org.springframework.data.redis.core.RedisTemplate;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.msn.poc.cart.entity.Cart;
-import com.msn.poc.cart.entity.Seller;
 import com.msn.poc.cart.feignclient.UserFeignClient;
 import com.msn.poc.cart.model.AddToCartRequest;
-import com.msn.poc.cart.model.CheckoutRequest;
 import com.msn.poc.cart.model.CurrencyChangeRequest;
 import com.msn.poc.cart.model.Product;
 import com.msn.poc.cart.model.ResponseObject;
